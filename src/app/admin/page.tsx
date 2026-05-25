@@ -2,12 +2,15 @@ import pool from "@/lib/db";
 import AdminPanelClient from "@/components/AdminPanelClient";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 interface Item {
   id: string;
   name: string;
   type: string;
   stock: number;
   min_stock: number;
+  auto_order_quantity: number;
   created_at: string;
 }
 
@@ -49,11 +52,7 @@ export default async function AdminPage() {
                 Stok Yönetimi
               </Link>
             </li>
-            <li>
-              <Link href="/stok-hareketleri" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">
-                Stok Hareketleri
-              </Link>
-            </li>
+
 
             <li>
               <Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">
@@ -70,11 +69,6 @@ export default async function AdminPage() {
                 Kalite Kontrol
               </Link>
             </li>
-            <li>
-              <Link href="#" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">
-                Sistem Ayarları
-              </Link>
-            </li>
           </ul>
         </nav>
       </aside>
@@ -86,12 +80,7 @@ export default async function AdminPage() {
           <h2 className="font-semibold text-gray-700 text-base">
             Mini MRP Admin Paneli
           </h2>
-          <div className="flex items-center space-x-4">
-            <span className="text-gray-500 font-medium">Hoş geldiniz, Admin</span>
-            <button className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium border border-blue-200 px-4 py-1.5 rounded transition-colors">
-              Çıkış
-            </button>
-          </div>
+
         </header>
 
         {/* Content Body */}

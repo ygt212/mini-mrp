@@ -18,15 +18,32 @@ for (const line of envContent.split("\n")) {
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const client = await pool.connect();
 
   try {
-    await pool.query("ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS received_quantity INT DEFAULT 0;");
-    console.log("✅ Satın Alma Siparişlerine received_quantity başarıyla eklendi!");
-  } catch (err) {
-    console.error("❌ Hata:", err.message);
-    process.exit(1);
+    await client.query("BEGIN");
+
+    console.log("Mevcut veriler temizleniyor...");
+    await client.query(`
+      TRUNCATE TABLE 
+        inventory_transactions, 
+        work_order_operations, 
+        bill_of_materials, 
+        quality_controls, 
+        work_orders, 
+        purchase_orders, 
+        items 
+      CASCADE;
+    `);
+
+    await client.query("COMMIT");
+    console.log("✅ Tüm veriler başarıyla silindi!");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Hata oluştu:", error);
   } finally {
-    await pool.end();
+    client.release();
+    pool.end();
   }
 }
 

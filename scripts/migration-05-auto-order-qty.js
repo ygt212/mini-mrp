@@ -18,15 +18,25 @@ for (const line of envContent.split("\n")) {
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const client = await pool.connect();
 
   try {
-    await pool.query("ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS received_quantity INT DEFAULT 0;");
-    console.log("✅ Satın Alma Siparişlerine received_quantity başarıyla eklendi!");
-  } catch (err) {
-    console.error("❌ Hata:", err.message);
-    process.exit(1);
+    await client.query("BEGIN");
+    console.log("Veritabanı güncelleniyor: items tablosuna auto_order_quantity ekleniyor...");
+    
+    await client.query(`
+      ALTER TABLE items 
+      ADD COLUMN IF NOT EXISTS auto_order_quantity INT NOT NULL DEFAULT 50;
+    `);
+
+    await client.query("COMMIT");
+    console.log("✅ Başarılı! auto_order_quantity sütunu eklendi.");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Hata oluştu:", error);
   } finally {
-    await pool.end();
+    client.release();
+    pool.end();
   }
 }
 

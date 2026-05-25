@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true, message: "Sipariş durumu güncellendi." });
   } catch (error) {
-    console.error("Satınalma sipariş durum güncelleme hatası:", error);
+    console.error("Satın Alma sipariş durum güncelleme hatası:", error);
     return Response.json({ success: false, error: "Sunucu hatası." }, { status: 500 });
   }
 }

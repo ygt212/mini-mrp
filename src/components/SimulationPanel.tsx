@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 interface Item {
   id: string;
@@ -9,6 +10,7 @@ interface Item {
   type: string;
   stock: number;
   min_stock: number;
+  auto_order_quantity?: number;
 }
 
 interface WorkOrder {
@@ -22,6 +24,8 @@ interface WorkOrder {
 interface QualityControl {
   id: string;
   work_order_id: string;
+  item_name?: string | null;
+  target_quantity?: number | null;
   status: string;
   notes: string | null;
 }
@@ -82,16 +86,17 @@ export default function SimulationPanel({
       });
       const data = await res.json();
       if (data.success) {
-        alert(
-          "Tüketim başarılı!" +
-            (data.autoOrdered ? " Otomatik sipariş oluşturuldu." : "")
-        );
+        let msg = "Tüketim başarılı!";
+        if (data.replenishmentType === 'buy') msg += " Otomatik Satın Alma siparişi oluşturuldu.";
+        else if (data.replenishmentType === 'make') msg += " Otomatik üretim iş emri açıldı.";
+
+        toast.success(msg);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -107,13 +112,13 @@ export default function SimulationPanel({
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        toast.success(data.message);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -129,13 +134,13 @@ export default function SimulationPanel({
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        toast.success(data.message);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -155,13 +160,13 @@ export default function SimulationPanel({
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        toast.success(data.message);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -177,13 +182,13 @@ export default function SimulationPanel({
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        toast.success(data.message);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -199,13 +204,13 @@ export default function SimulationPanel({
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        toast.success(data.message);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -293,7 +298,7 @@ export default function SimulationPanel({
             <option value="" disabled>Kalite Kaydı Seçin</option>
             {pendingQualityControls.map((qc) => (
               <option key={qc.id} value={qc.id}>
-                QC-{qc.id.substring(0, 8)} (İş Emri: {qc.work_order_id.substring(0, 8)})
+                {qc.item_name} ({qc.target_quantity})
               </option>
             ))}
           </select>
@@ -346,10 +351,10 @@ export default function SimulationPanel({
         </div>
       </div>
 
-      {/* Bölüm 5: Satınalma & Mal Kabul */}
+      {/* Bölüm 5: Satın Alma & Mal Kabul */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
         <h3 className="text-md font-bold text-slate-700 mb-3 border-b pb-2">
-          Satınalma & Mal Kabul
+          Satın Alma & Mal Kabul
         </h3>
         <div className="flex flex-col gap-3 flex-1">
           <select

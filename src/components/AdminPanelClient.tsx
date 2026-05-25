@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 interface Item {
   id: string;
@@ -9,6 +10,7 @@ interface Item {
   type: string;
   stock: number;
   min_stock: number;
+  auto_order_quantity: number;
 }
 
 export default function AdminPanelClient({ items }: { items: Item[] }) {
@@ -20,6 +22,7 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
   const [newType, setNewType] = useState("hammadde");
   const [newStock, setNewStock] = useState(0);
   const [newMinStock, setNewMinStock] = useState(0);
+  const [newAutoOrderQuantity, setNewAutoOrderQuantity] = useState(50);
 
   // Form 2: Stok Güncelle
   const [updateItemId, setUpdateItemId] = useState(items[0]?.id || "");
@@ -48,20 +51,22 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
           type: newType,
           stock: newStock,
           minStock: newMinStock,
+          autoOrderQuantity: newAutoOrderQuantity,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        alert("Ürün başarıyla eklendi.");
+        toast.success("Ürün başarıyla eklendi.");
         setNewName("");
         setNewStock(0);
         setNewMinStock(0);
+        setNewAutoOrderQuantity(50);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -78,14 +83,14 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Stok güncellendi.");
+        toast.success("Stok güncellendi.");
         setUpdateStock(0);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -105,14 +110,14 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
       });
       const data = await res.json();
       if (data.success) {
-        alert("İş emri oluşturuldu.");
+        toast.success("İş emri oluşturuldu.");
         setWoTargetQuantity(1);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -133,14 +138,16 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
       });
       const data = await res.json();
       if (data.success) {
-        alert("Reçete (BOM) başarıyla eklendi.");
+        toast.success("Reçete (BOM) başarıyla eklendi.");
+        setBomProductId("");
+        setBomRawMaterialId("");
         setBomQuantity(1);
         router.refresh();
       } else {
-        alert("Hata: " + data.error);
+        toast.error("Hata: " + data.error);
       }
     } catch {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
     setLoading(false);
   };
@@ -191,6 +198,18 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
               />
             </div>
           </div>
+          {newType === "hammadde" && (
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-500 mb-1">Oto. Sipariş Miktarı</label>
+              <input
+                required
+                type="number"
+                className="border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={newAutoOrderQuantity}
+                onChange={(e) => setNewAutoOrderQuantity(Number(e.target.value))}
+              />
+            </div>
+          )}
           <div className="mt-auto pt-2">
             <button
               type="submit"

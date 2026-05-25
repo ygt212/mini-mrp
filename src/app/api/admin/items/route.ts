@@ -3,7 +3,7 @@ import pool from "@/lib/db";
 export async function POST(request: Request) {
   const client = await pool.connect();
   try {
-    const { name, type, stock, minStock } = await request.json();
+    const { name, type, stock, minStock, autoOrderQuantity } = await request.json();
 
     if (!name || !type) {
       return Response.json(
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (stock < 0 || minStock < 0) {
+    if (stock < 0 || minStock < 0 || autoOrderQuantity < 0) {
       return Response.json(
         { success: false, error: "Stok veya minStok 0'dan küçük olamaz." },
         { status: 400 },
@@ -32,8 +32,8 @@ export async function POST(request: Request) {
     await client.query("BEGIN");
 
     const result = await client.query(
-      "INSERT INTO items (name, type, stock, min_stock) VALUES ($1, $2, $3, $4) RETURNING id",
-      [name, type, stock || 0, minStock || 0],
+      "INSERT INTO items (name, type, stock, min_stock, auto_order_quantity) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+      [name, type, stock || 0, minStock || 0, autoOrderQuantity || 50],
     );
 
     const newItemId = result.rows[0].id;

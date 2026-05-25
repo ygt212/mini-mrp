@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     for (const bom of bomCheck.rows) {
       const requiredQty = bom.quantity * targetQuantity;
       const stockCheck = await client.query(
-        "SELECT id, name, stock, min_stock FROM items WHERE id = $1",
+        "SELECT id, name, stock, min_stock, type, auto_order_quantity FROM items WHERE id = $1",
         [bom.raw_material_id],
       );
 
@@ -73,6 +73,8 @@ export async function POST(request: Request) {
             newStock: item.stock - requiredQty,
             minStock: item.min_stock,
             deducted: requiredQty,
+            type: item.type,
+            autoOrderQty: item.auto_order_quantity,
           });
         }
       }
@@ -107,21 +109,46 @@ export async function POST(request: Request) {
 
       // Stok minimumun altına düştüyse
       if (deduction.newStock < deduction.minStock) {
-        const orderQty = Math.max(
-          deduction.minStock - deduction.newStock + 50,
-          100,
-        );
+        if (deduction.type === 'hammadde') {
+          const orderQty = deduction.autoOrderQty || 50;
 
-        const existingPo = await client.query(
-          "SELECT id FROM purchase_orders WHERE item_id = $1 AND status = 'Bekliyor'",
-          [deduction.id],
-        );
-
-        if (existingPo.rows.length === 0) {
-          await client.query(
-            "INSERT INTO purchase_orders (item_id, quantity, status) VALUES ($1, $2, 'Bekliyor')",
-            [deduction.id, orderQty],
+          const existingPo = await client.query(
+            "SELECT id FROM purchase_orders WHERE item_id = $1 AND status = 'Bekliyor'",
+            [deduction.id],
           );
+
+          if (existingPo.rows.length === 0) {
+            await client.query(
+              "INSERT INTO purchase_orders (item_id, quantity, status) VALUES ($1, $2, 'Bekliyor')",
+              [deduction.id, orderQty],
+            );
+          }
+        } else if (deduction.type === 'son_urun') {
+          const existingWo = await client.query(
+            "SELECT id FROM work_orders WHERE item_id=$1 AND status != 'Tamamland\u0131'",
+            [deduction.id]
+          );
+
+          if (existingWo.rows.length === 0) {
+            const woRes = await client.query(
+              "INSERT INTO work_orders (item_id, target_quantity, status) VALUES ($1, $2, 'Planland\u0131') RETURNING id",
+              [deduction.id, deduction.minStock || 10]
+            );
+            const wId = woRes.rows[0].id;
+
+            const ops = [
+              { step: 1, name: "Kesim/Haz\u0131rl\u0131k" },
+              { step: 2, name: "Montaj" },
+              { step: 3, name: "Paketleme" },
+            ];
+
+            for (const op of ops) {
+              await client.query(
+                "INSERT INTO work_order_operations (work_order_id, operation_name, step_order, status) VALUES ($1, $2, $3, 'Bekliyor')",
+                [wId, op.name, op.step]
+              );
+            }
+          }
         }
       }
     }

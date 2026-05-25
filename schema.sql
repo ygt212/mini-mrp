@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS items (
   type VARCHAR(50) NOT NULL,           -- hammadde, son_urun
   stock INT NOT NULL DEFAULT 0,
   min_stock INT NOT NULL DEFAULT 0,
+  auto_order_quantity INT NOT NULL DEFAULT 50,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
