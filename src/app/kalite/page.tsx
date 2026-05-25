@@ -39,14 +39,15 @@ export default async function KalitePage() {
             <li><Link href="/" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Dashboard</Link></li>
             <li><Link href="/admin" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Admin Paneli</Link></li>
             <li><Link href="/stok" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Yönetimi</Link></li>
-            <li><Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Satınalma</Link></li>
+
+            <li><Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Satın Alma</Link></li>
             <li><Link href="/uretim" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Üretim Modülü</Link></li>
             <li><Link href="/kalite" className="block px-6 py-2.5 bg-blue-600 text-white">Kalite Kontrol</Link></li>
             <li><Link href="#" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Sistem Ayarları</Link></li>
           </ul>
         </nav>
       </aside>
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
           <h2 className="font-semibold text-gray-700 text-base">Kalite Kontrol</h2>

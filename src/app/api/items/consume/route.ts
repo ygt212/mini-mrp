@@ -45,6 +45,11 @@ export async function POST(request: Request) {
       itemId,
     ]);
 
+    await client.query(
+      "INSERT INTO inventory_transactions (item_id, quantity_change, transaction_type, reference_details, post_transaction_stock) VALUES ($1, $2, '\u00C7\u0131k\u0131\u015F', 'Manuel T\u00FCketim', $3)",
+      [itemId, -amount, currentStock - amount]
+    );
+
     // Güncel stok ve min_stock değerlerini al
     const result = await client.query(
       "SELECT stock, min_stock FROM items WHERE id = $1",

@@ -72,6 +72,7 @@ export async function POST(request: Request) {
             id: item.id,
             newStock: item.stock - requiredQty,
             minStock: item.min_stock,
+            deducted: requiredQty,
           });
         }
       }
@@ -86,12 +87,23 @@ export async function POST(request: Request) {
       );
     }
 
+    const woResult = await client.query(
+      "INSERT INTO work_orders (item_id, target_quantity, status) VALUES ($1, $2, 'Planland\u0131') RETURNING id",
+      [itemId, targetQuantity],
+    );
+    const newWoId = woResult.rows[0].id;
+
     // Hammadde stoklarını düş ve gerekiyorsa satın alma siparişi oluştur
     for (const deduction of deductions) {
       await client.query("UPDATE items SET stock = $1 WHERE id = $2", [
         deduction.newStock,
         deduction.id,
       ]);
+
+      await client.query(
+        "INSERT INTO inventory_transactions (item_id, quantity_change, transaction_type, reference_details, post_transaction_stock) VALUES ($1, $2, '\u00C7\u0131k\u0131\u015F', $3, $4)",
+        [deduction.id, -deduction.deducted, `\u0130\u015F Emri \u00DCretim T\u00FCketimi (${newWoId})`, deduction.newStock]
+      );
 
       // Stok minimumun altına düştüyse
       if (deduction.newStock < deduction.minStock) {
@@ -114,16 +126,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // İş emrini oluştur
-    const woResult = await client.query(
-      "INSERT INTO work_orders (item_id, target_quantity, status) VALUES ($1, $2, 'Planland\u0131') RETURNING id",
-      [itemId, targetQuantity],
-    );
-    const newWoId = woResult.rows[0].id;
-
     // Rota adımlarını (Operasyonları) oluştur
     const operations = [
-      { step: 1, name: "Kesim/Hazırlık" },
+      { step: 1, name: "Kesim/Haz\u0131rl\u0131k" },
       { step: 2, name: "Montaj" },
       { step: 3, name: "Paketleme" },
     ];

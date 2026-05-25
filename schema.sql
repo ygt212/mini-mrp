@@ -48,3 +48,13 @@ CREATE TABLE IF NOT EXISTS work_order_operations (
   step_order INT NOT NULL,
   status VARCHAR(50) DEFAULT 'Bekliyor'
 );
+
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  quantity_change INT NOT NULL,
+  transaction_type VARCHAR(50) NOT NULL,
+  reference_details VARCHAR(255),
+  post_transaction_stock INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);

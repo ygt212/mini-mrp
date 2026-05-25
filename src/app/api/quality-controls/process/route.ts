@@ -69,10 +69,17 @@ export async function POST(request: Request) {
 
       const { item_id, target_quantity } = woResult.rows[0];
 
-      await client.query("UPDATE items SET stock = stock + $1 WHERE id = $2", [
+      const stockUpdateResult = await client.query("UPDATE items SET stock = stock + $1 WHERE id = $2 RETURNING stock", [
         target_quantity,
         item_id,
       ]);
+      
+      const currentStock = stockUpdateResult.rows[0].stock;
+
+      await client.query(
+        "INSERT INTO inventory_transactions (item_id, quantity_change, transaction_type, reference_details, post_transaction_stock) VALUES ($1, $2, 'Giri\u015F', 'Kalite Onay\u0131 \u00DCretim Giri\u015Fi', $3)",
+        [item_id, target_quantity, currentStock]
+      );
     }
 
     await client.query("COMMIT");

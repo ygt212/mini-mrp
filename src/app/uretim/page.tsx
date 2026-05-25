@@ -51,14 +51,15 @@ export default async function UretimPage() {
             <li><Link href="/" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Dashboard</Link></li>
             <li><Link href="/admin" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Admin Paneli</Link></li>
             <li><Link href="/stok" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Yönetimi</Link></li>
-            <li><Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Satınalma</Link></li>
+
+            <li><Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Satın Alma</Link></li>
             <li><Link href="/uretim" className="block px-6 py-2.5 bg-blue-600 text-white">Üretim Modülü</Link></li>
             <li><Link href="/kalite" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Kalite Kontrol</Link></li>
             <li><Link href="#" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Sistem Ayarları</Link></li>
           </ul>
         </nav>
       </aside>
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
           <h2 className="font-semibold text-gray-700 text-base">Üretim Modülü</h2>
@@ -102,11 +103,10 @@ export default async function UretimPage() {
                           <div className="flex flex-wrap gap-1">
                             {order.operations && order.operations.length > 0 ? (
                               order.operations.map(op => (
-                                <span 
-                                  key={op.id} 
-                                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                                    op.status === 'Tamamlandı' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                                  }`}
+                                <span
+                                  key={op.id}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${op.status === 'Tamamlandı' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                                    }`}
                                 >
                                   {op.step_order}. {op.operation_name}
                                 </span>

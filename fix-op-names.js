@@ -20,19 +20,10 @@ async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
   try {
-    const res = await pool.query("SELECT DISTINCT status FROM work_orders");
-    console.log("Work order statuses:", res.rows);
-    
-    const opRes = await pool.query("SELECT DISTINCT status FROM work_order_operations");
-    console.log("Operation statuses:", opRes.rows);
-
-    await pool.query("UPDATE work_orders SET status = 'Üretimde' WHERE status LIKE '%retimde%'");
-    await pool.query("UPDATE work_orders SET status = 'Tamamlandı' WHERE status LIKE '%amamland%'");
-    await pool.query("UPDATE work_order_operations SET status = 'Tamamlandı' WHERE status LIKE '%amamland%'");
-    
-    console.log("DB updated successfully with correct UTF-8 strings.");
+    await pool.query("UPDATE work_order_operations SET operation_name = 'Kesim/Hazırlık' WHERE operation_name LIKE '%Haz%rl%k%'");
+    console.log("✅ Operasyon isimleri düzeltildi!");
   } catch (err) {
-    console.error(err);
+    console.error("❌ Hata:", err.message);
   } finally {
     await pool.end();
   }

@@ -49,9 +49,10 @@ export default async function AdminPage() {
                 Stok Yönetimi
               </Link>
             </li>
+
             <li>
               <Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">
-                Satınalma
+                Satın Alma
               </Link>
             </li>
             <li>
