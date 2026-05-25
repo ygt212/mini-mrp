@@ -16,6 +16,7 @@ interface PurchaseOrder {
   item_id: string;
   item_name?: string | null;
   quantity: number;
+  received_quantity: number;
   status: string;
   created_at: string;
 }
@@ -81,7 +82,7 @@ export default async function DashboardPage() {
             <li><Link href="/" className="block px-6 py-2.5 bg-blue-600 text-white">Dashboard</Link></li>
             <li><Link href="/admin" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Admin Paneli</Link></li>
             <li><Link href="/stok" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Yönetimi</Link></li>
-
+            <li><Link href="/stok-hareketleri" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Hareketleri</Link></li>
             <li><Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Satın Alma</Link></li>
             <li><Link href="/uretim" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Üretim Modülü</Link></li>
             <li><Link href="/kalite" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Kalite Kontrol</Link></li>
@@ -111,7 +112,7 @@ export default async function DashboardPage() {
             </div>
           ) : (
             <>
-              <SimulationPanel items={items} workOrders={workOrders} qualityControls={qualityControls} />
+              <SimulationPanel items={items} purchaseOrders={purchaseOrders} workOrders={workOrders} qualityControls={qualityControls} />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -168,7 +169,7 @@ export default async function DashboardPage() {
                           <tr key={po.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                             <td className="px-4 py-2 border-r border-gray-200 font-mono text-xs">{po.id.substring(0, 8)}</td>
                             <td className="px-4 py-2 border-r border-gray-200">{po.item_name || 'Bilinmiyor'}</td>
-                            <td className="px-4 py-2 border-r border-gray-200 text-right">{po.quantity}</td>
+                            <td className="px-4 py-2 border-r border-gray-200 text-right">Alınan: {po.received_quantity || 0} / Toplam: {po.quantity}</td>
                             <td className="px-4 py-2">
                               <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">{po.status}</span>
                             </td>

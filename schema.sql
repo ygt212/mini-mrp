@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
   quantity INT NOT NULL,
+  received_quantity INT DEFAULT 0,
   status VARCHAR(50) NOT NULL DEFAULT 'Bekliyor',  -- Bekliyor, Yolda, Teslim Alındı
   created_at TIMESTAMP DEFAULT NOW()
 );

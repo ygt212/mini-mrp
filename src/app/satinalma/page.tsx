@@ -6,6 +6,7 @@ interface PurchaseOrder {
   item_id: string;
   item_name?: string | null;
   quantity: number;
+  received_quantity: number;
   status: string;
   created_at: string;
 }
@@ -38,7 +39,7 @@ export default async function SatinalmaPage() {
             <li><Link href="/" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Dashboard</Link></li>
             <li><Link href="/admin" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Admin Paneli</Link></li>
             <li><Link href="/stok" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Yönetimi</Link></li>
-
+            <li><Link href="/stok-hareketleri" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Hareketleri</Link></li>
             <li><Link href="/satinalma" className="block px-6 py-2.5 bg-blue-600 text-white">Satın Alma</Link></li>
             <li><Link href="/uretim" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Üretim Modülü</Link></li>
             <li><Link href="/kalite" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Kalite Kontrol</Link></li>
@@ -73,7 +74,7 @@ export default async function SatinalmaPage() {
                     <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600 uppercase">
                       <th className="px-4 py-2 font-semibold border-r border-gray-200">Sipariş ID</th>
                       <th className="px-4 py-2 font-semibold border-r border-gray-200">Ürün Adı</th>
-                      <th className="px-4 py-2 font-semibold border-r border-gray-200">Miktar</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200">Alınan / Toplam Miktar</th>
                       <th className="px-4 py-2 font-semibold border-r border-gray-200">Durum</th>
                       <th className="px-4 py-2 font-semibold">Tarih</th>
                     </tr>
@@ -83,7 +84,7 @@ export default async function SatinalmaPage() {
                       <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-2 border-r border-gray-200">{order.id}</td>
                         <td className="px-4 py-2 border-r border-gray-200">{order.item_name}</td>
-                        <td className="px-4 py-2 border-r border-gray-200">{order.quantity}</td>
+                        <td className="px-4 py-2 border-r border-gray-200">{order.received_quantity || 0} / {order.quantity}</td>
                         <td className="px-4 py-2 border-r border-gray-200">{order.status}</td>
                         <td className="px-4 py-2">{new Date(order.created_at).toLocaleString('tr-TR')}</td>
                       </tr>

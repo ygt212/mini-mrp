@@ -26,12 +26,23 @@ interface QualityControl {
   notes: string | null;
 }
 
+interface PurchaseOrder {
+  id: string;
+  item_id: string;
+  item_name?: string | null;
+  quantity: number;
+  received_quantity: number;
+  status: string;
+}
+
 export default function SimulationPanel({
   items,
+  purchaseOrders,
   workOrders,
   qualityControls,
 }: {
   items: Item[];
+  purchaseOrders: PurchaseOrder[];
   workOrders: WorkOrder[];
   qualityControls: QualityControl[];
 }) {
@@ -55,6 +66,10 @@ export default function SimulationPanel({
   const [qualityControlId, setQualityControlId] = useState(
     pendingQualityControls[0]?.id || ""
   );
+
+  const pendingPOs = purchaseOrders.filter((po) => po.status !== "Tam Teslim");
+  const [poId, setPoId] = useState(pendingPOs[0]?.id || "");
+  const [receiveAmount, setReceiveAmount] = useState(1);
 
   const handleConsume = async () => {
     if (!consumeItemId || consumeAmount <= 0) return;
@@ -137,6 +152,50 @@ export default function SimulationPanel({
           status,
           notes: "Manuel kontrol paneli üzerinden işlem yapıldı.",
         }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        router.refresh();
+      } else {
+        alert("Hata: " + data.error);
+      }
+    } catch {
+      alert("Bir hata oluştu.");
+    }
+    setLoading(false);
+  };
+
+  const handlePoStatus = async (action: "onayla" | "siparis_gec") => {
+    if (!poId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/purchase-orders/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poId, action }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        router.refresh();
+      } else {
+        alert("Hata: " + data.error);
+      }
+    } catch {
+      alert("Bir hata oluştu.");
+    }
+    setLoading(false);
+  };
+
+  const handlePoReceive = async () => {
+    if (!poId || receiveAmount <= 0) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/purchase-orders/receive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poId, receiveAmount }),
       });
       const data = await res.json();
       if (data.success) {
@@ -284,6 +343,70 @@ export default function SimulationPanel({
               {loading ? "İşleniyor..." : "Sıradaki Adımı Tamamla"}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Bölüm 5: Satınalma & Mal Kabul */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+        <h3 className="text-md font-bold text-slate-700 mb-3 border-b pb-2">
+          Satınalma & Mal Kabul
+        </h3>
+        <div className="flex flex-col gap-3 flex-1">
+          <select
+            className="border border-slate-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            value={poId}
+            onChange={(e) => setPoId(e.target.value)}
+          >
+            <option value="" disabled>Sipariş Seçin</option>
+            {pendingPOs.map((po) => (
+              <option key={po.id} value={po.id}>
+                {po.item_name || 'Bilinmeyen'} ({po.received_quantity || 0}/{po.quantity}) - {po.status}
+              </option>
+            ))}
+          </select>
+
+          {poId && (
+            <div className="mt-auto pt-2 flex flex-col gap-2">
+              {pendingPOs.find(p => p.id === poId)?.status === "Bekliyor" && (
+                <button
+                  onClick={() => handlePoStatus("onayla")}
+                  disabled={loading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white p-2.5 rounded text-sm font-semibold transition-colors shadow-sm"
+                >
+                  {loading ? "İşleniyor..." : "Onayla"}
+                </button>
+              )}
+
+              {pendingPOs.find(p => p.id === poId)?.status === "Onayland\u0131" && (
+                <button
+                  onClick={() => handlePoStatus("siparis_gec")}
+                  disabled={loading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white p-2.5 rounded text-sm font-semibold transition-colors shadow-sm"
+                >
+                  {loading ? "İşleniyor..." : "Tedarikçiye Geç"}
+                </button>
+              )}
+
+              {(pendingPOs.find(p => p.id === poId)?.status === "Sipari\u015F Ge\u00E7ildi" || pendingPOs.find(p => p.id === poId)?.status === "K\u0131smi Teslim") && (
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-1/3 border border-slate-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={receiveAmount}
+                    onChange={(e) => setReceiveAmount(Number(e.target.value))}
+                  />
+                  <button
+                    onClick={handlePoReceive}
+                    disabled={loading}
+                    className="w-2/3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white p-2 rounded text-sm font-semibold transition-colors shadow-sm"
+                  >
+                    {loading ? "İşleniyor..." : "Mal Kabul Yap"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
