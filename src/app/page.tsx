@@ -1,65 +1,258 @@
-import Image from "next/image";
+import pool from "@/lib/db";
+import SimulationPanel from "@/components/SimulationPanel";
+import Link from "next/link";
 
-export default function Home() {
+interface Item {
+  id: string;
+  name: string;
+  type: string;
+  stock: number;
+  min_stock: number;
+  created_at: string;
+}
+
+interface PurchaseOrder {
+  id: string;
+  item_id: string;
+  item_name?: string | null;
+  quantity: number;
+  status: string;
+  created_at: string;
+}
+
+interface WorkOrder {
+  id: string;
+  item_id: string;
+  item_name?: string | null;
+  target_quantity: number;
+  status: string;
+  created_at: string;
+}
+
+interface QualityControl {
+  id: string;
+  work_order_id: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export default async function DashboardPage() {
+  let items: Item[] = [];
+  let purchaseOrders: PurchaseOrder[] = [];
+  let workOrders: WorkOrder[] = [];
+  let qualityControls: QualityControl[] = [];
+  let dbError = null;
+
+  try {
+    const itemsResult = await pool.query("SELECT * FROM items ORDER BY created_at DESC");
+    const purchaseOrdersResult = await pool.query(`
+      SELECT po.*, i.name as item_name 
+      FROM purchase_orders po 
+      LEFT JOIN items i ON po.item_id = i.id 
+      ORDER BY po.created_at DESC
+    `);
+    const workOrdersResult = await pool.query(`
+      SELECT wo.*, i.name as item_name 
+      FROM work_orders wo 
+      LEFT JOIN items i ON wo.item_id = i.id 
+      ORDER BY wo.created_at DESC
+    `);
+    const qualityControlsResult = await pool.query("SELECT * FROM quality_controls ORDER BY created_at DESC");
+
+    items = itemsResult.rows;
+    purchaseOrders = purchaseOrdersResult.rows;
+    workOrders = workOrdersResult.rows;
+    qualityControls = qualityControlsResult.rows;
+  } catch (error) {
+    console.error("Veritabanı bağlantı hatası:", error);
+    dbError = "Veritabanına bağlanırken bir hata oluştu. Lütfen bağlantınızı kontrol edin.";
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex min-h-screen bg-gray-100 font-sans text-sm text-gray-800">
+      {/* Sidebar */}
+      <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col">
+        <div className="h-14 flex items-center px-6 bg-slate-950 border-b border-slate-800">
+          <span className="font-bold tracking-widest text-lg">MRP SİSTEMİ</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <nav className="flex-1 py-4">
+          <ul className="space-y-1">
+            <li><Link href="/" className="block px-6 py-2.5 bg-blue-600 text-white">Dashboard</Link></li>
+            <li><Link href="/admin" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Admin Paneli</Link></li>
+            <li><Link href="/stok" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Stok Yönetimi</Link></li>
+            <li><Link href="/satinalma" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Satınalma</Link></li>
+            <li><Link href="/uretim" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Üretim Modülü</Link></li>
+            <li><Link href="/kalite" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Kalite Kontrol</Link></li>
+            <li><Link href="#" className="block px-6 py-2.5 hover:bg-slate-800 text-slate-300">Sistem Ayarları</Link></li>
+          </ul>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Topbar */}
+        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
+          <h2 className="font-semibold text-gray-700 text-base">Mini MRP Yönetim Paneli</h2>
+          <div className="flex items-center space-x-4">
+            <span className="text-gray-500 font-medium">Hoş geldiniz, Admin</span>
+            <button className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium border border-blue-200 px-4 py-1.5 rounded transition-colors">
+              Çıkış
+            </button>
+          </div>
+        </header>
+
+        {/* Content Body */}
+        <main className="flex-1 overflow-auto p-6 space-y-6">
+          {dbError ? (
+            <div className="bg-red-50 text-red-600 p-4 rounded border border-red-200 shadow-sm font-medium">
+              {dbError}
+            </div>
+          ) : (
+            <>
+              <SimulationPanel items={items} workOrders={workOrders} qualityControls={qualityControls} />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Stok Durumu Tablosu */}
+            <div className="bg-white border border-gray-300 rounded flex flex-col">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-semibold text-gray-600 uppercase text-xs">Stok Durumu</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600 uppercase">
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-1/2">Ürün Adı</th>
+                      <th className="px-4 py-2 font-semibold">Stok / Min</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.length === 0 ? (
+                      <tr><td colSpan={2} className="px-4 py-3 text-gray-400 italic text-center">Kayıt bulunamadı.</td></tr>
+                    ) : items.map((item) => (
+                      <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-2 border-r border-gray-200">{item.name}</td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${item.stock < item.min_stock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                            {item.stock} / {item.min_stock}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Satın Alma Tablosu */}
+            <div className="bg-white border border-gray-300 rounded flex flex-col">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-semibold text-gray-600 uppercase text-xs">Satın Alma Siparişleri</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600 uppercase">
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-1/4">Sipariş ID</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-2/4">Ürün Adı</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200">Miktar</th>
+                      <th className="px-4 py-2 font-semibold">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {purchaseOrders.length === 0 ? (
+                      <tr><td colSpan={4} className="px-4 py-3 text-gray-400 italic text-center">Kayıt bulunamadı.</td></tr>
+                    ) : purchaseOrders.map((po) => (
+                      <tr key={po.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-2 border-r border-gray-200 font-mono text-xs">{po.id.substring(0, 8)}</td>
+                        <td className="px-4 py-2 border-r border-gray-200">{po.item_name || 'Bilinmiyor'}</td>
+                        <td className="px-4 py-2 border-r border-gray-200 text-right">{po.quantity}</td>
+                        <td className="px-4 py-2">
+                          <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">{po.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Üretim İş Emirleri Tablosu */}
+            <div className="bg-white border border-gray-300 rounded flex flex-col">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-semibold text-gray-600 uppercase text-xs">Üretim İş Emirleri</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600 uppercase">
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-1/4">İş Emri ID</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-2/4">Ürün Adı</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200">Hedef</th>
+                      <th className="px-4 py-2 font-semibold">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workOrders.length === 0 ? (
+                      <tr><td colSpan={4} className="px-4 py-3 text-gray-400 italic text-center">Kayıt bulunamadı.</td></tr>
+                    ) : workOrders.map((wo) => (
+                      <tr key={wo.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-2 border-r border-gray-200 font-mono text-xs">{wo.id.substring(0, 8)}</td>
+                        <td className="px-4 py-2 border-r border-gray-200">{wo.item_name || 'Bilinmiyor'}</td>
+                        <td className="px-4 py-2 border-r border-gray-200 text-right">{wo.target_quantity}</td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${wo.status === 'Tamamlandı' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                            {wo.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Kalite Kontrol Tablosu */}
+            <div className="bg-white border border-gray-300 rounded flex flex-col">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <h3 className="font-semibold text-gray-600 uppercase text-xs">Kalite Kontrol</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600 uppercase">
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-1/5">Kalite ID</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-1/5">İş Emri</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200 w-2/5">Notlar</th>
+                      <th className="px-4 py-2 font-semibold w-1/5">Durum</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {qualityControls.length === 0 ? (
+                      <tr><td colSpan={4} className="px-4 py-3 text-gray-400 italic text-center">Kayıt bulunamadı.</td></tr>
+                    ) : qualityControls.map((qc) => (
+                      <tr key={qc.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-2 border-r border-gray-200 font-mono text-xs">{qc.id.substring(0, 8)}</td>
+                        <td className="px-4 py-2 border-r border-gray-200 font-mono text-xs">{qc.work_order_id.substring(0, 8)}</td>
+                        <td className="px-4 py-2 border-r border-gray-200 truncate max-w-[150px]" title={qc.notes || undefined}>{qc.notes || '-'}</td>
+                        <td className="px-4 py-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${qc.status === 'Onaylandı' ? 'bg-green-50 text-green-700 border-green-200' : qc.status === 'Reddedildi' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                            {qc.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+            </>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
