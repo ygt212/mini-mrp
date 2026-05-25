@@ -45,6 +45,9 @@ export default function SimulationPanel({
   const [completeWorkOrderId, setCompleteWorkOrderId] = useState(
     pendingWorkOrders[0]?.id || ""
   );
+  const [advanceWorkOrderId, setAdvanceWorkOrderId] = useState(
+    pendingWorkOrders[0]?.id || ""
+  );
 
   const pendingQualityControls = qualityControls.filter(
     (qc) => qc.status === "Karantinada"
@@ -100,6 +103,28 @@ export default function SimulationPanel({
     setLoading(false);
   };
 
+  const handleAdvanceOperation = async () => {
+    if (!advanceWorkOrderId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/work-orders/operations/advance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workOrderId: advanceWorkOrderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        router.refresh();
+      } else {
+        alert("Hata: " + data.error);
+      }
+    } catch {
+      alert("Bir hata oluştu.");
+    }
+    setLoading(false);
+  };
+
   const handleQualityDecision = async (status: "Onaylandı" | "Reddedildi") => {
     if (!qualityControlId) return;
     setLoading(true);
@@ -127,7 +152,7 @@ export default function SimulationPanel({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-black items-stretch">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8 text-black items-stretch">
       {/* Bölüm 1: Hammadde Tüket */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
         <h3 className="text-md font-bold text-slate-700 mb-3 border-b pb-2">
@@ -227,6 +252,36 @@ export default function SimulationPanel({
               className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white p-2.5 rounded text-sm font-semibold transition-colors shadow-sm"
             >
               {loading ? "İşleniyor..." : "Reddet"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bölüm 4: Operasyon İlerlet */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+        <h3 className="text-md font-bold text-slate-700 mb-3 border-b pb-2">
+          Operasyon Adımını İlerlet
+        </h3>
+        <div className="flex flex-col gap-3 flex-1">
+          <select
+            className="border border-slate-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            value={advanceWorkOrderId}
+            onChange={(e) => setAdvanceWorkOrderId(e.target.value)}
+          >
+            <option value="" disabled>İş Emri Seçin</option>
+            {pendingWorkOrders.map((wo) => (
+              <option key={wo.id} value={wo.id}>
+                {wo.item_name || 'Bilinmeyen Ürün'} (Hedef: {wo.target_quantity})
+              </option>
+            ))}
+          </select>
+          <div className="mt-auto pt-2">
+            <button
+              onClick={handleAdvanceOperation}
+              disabled={loading || !advanceWorkOrderId}
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white p-2.5 rounded text-sm font-semibold transition-colors shadow-sm"
+            >
+              {loading ? "İşleniyor..." : "Sıradaki Adımı Tamamla"}
             </button>
           </div>
         </div>

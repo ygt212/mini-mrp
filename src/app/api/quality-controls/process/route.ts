@@ -9,57 +9,70 @@ export async function POST(request: Request) {
     if (!qualityControlId || !status) {
       return Response.json(
         { success: false, error: "qualityControlId ve status gereklidir." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    if (status !== "Onaylandı" && status !== "Reddedildi") {
+    const isApproved =
+      status.includes("Onay") || status.toLowerCase() === "approved";
+    const isRejected =
+      status.includes("Red") || status.toLowerCase() === "rejected";
+
+    if (!isApproved && !isRejected) {
       return Response.json(
-        { success: false, error: "status yalnızca 'Onaylandı' veya 'Reddedildi' olabilir." },
-        { status: 400 }
+        {
+          success: false,
+          error: "Geçersiz durum. İçinde 'Onay' veya 'Red' geçmelidir.",
+        },
+        { status: 400 },
       );
     }
+
+    const finalStatus = isApproved ? "Onaylandı" : "Reddedildi";
 
     await client.query("BEGIN");
 
     // Kalite kontrol kaydını güncelle (sadece 'Karantinada' olanlar işlenebilir)
     const updateResult = await client.query(
       "UPDATE quality_controls SET status = $1, notes = $2 WHERE id = $3 AND status = 'Karantinada'",
-      [status, notes || null, qualityControlId]
+      [finalStatus, notes || null, qualityControlId],
     );
 
     if (updateResult.rowCount === 0) {
       await client.query("ROLLBACK");
       return Response.json(
-        { success: false, error: "Bu kalite kaydı bulunamadı veya zaten daha önce işlenmiş." },
-        { status: 400 }
+        {
+          success: false,
+          error: "Bu kalite kaydı bulunamadı veya zaten daha önce işlenmiş.",
+        },
+        { status: 400 },
       );
     }
 
     // Onaylandıysa üretilen miktarı stoka ekle
-    if (status === "Onaylandı") {
+    if (finalStatus === "Onaylandı") {
       const woResult = await client.query(
         `SELECT wo.item_id, wo.target_quantity
          FROM quality_controls qc
          JOIN work_orders wo ON wo.id = qc.work_order_id
          WHERE qc.id = $1`,
-        [qualityControlId]
+        [qualityControlId],
       );
 
       if (woResult.rows.length === 0) {
         await client.query("ROLLBACK");
         return Response.json(
           { success: false, error: "İlişkili iş emri bulunamadı." },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
       const { item_id, target_quantity } = woResult.rows[0];
 
-      await client.query(
-        "UPDATE items SET stock = stock + $1 WHERE id = $2",
-        [target_quantity, item_id]
-      );
+      await client.query("UPDATE items SET stock = stock + $1 WHERE id = $2", [
+        target_quantity,
+        item_id,
+      ]);
     }
 
     await client.query("COMMIT");
@@ -67,7 +80,7 @@ export async function POST(request: Request) {
     return Response.json({
       success: true,
       message:
-        status === "Onaylandı"
+        finalStatus === "Onaylandı"
           ? "Kalite süreci işlendi ve stoklar güncellendi."
           : "Kalite süreci işlendi, ürün reddedildi.",
     });
@@ -76,7 +89,7 @@ export async function POST(request: Request) {
     console.error("Kalite kontrol işleme hatası:", error);
     return Response.json(
       { success: false, error: "Sunucu hatası." },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     client.release();

@@ -32,3 +32,19 @@ CREATE TABLE IF NOT EXISTS quality_controls (
   notes TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS bill_of_materials (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  raw_material_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  quantity INT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS work_order_operations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  work_order_id UUID REFERENCES work_orders(id) ON DELETE CASCADE,
+  operation_name VARCHAR(255) NOT NULL,
+  step_order INT NOT NULL,
+  status VARCHAR(50) DEFAULT 'Bekliyor'
+);

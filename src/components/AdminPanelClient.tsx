@@ -29,6 +29,13 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
   const [woItemId, setWoItemId] = useState(items[0]?.id || "");
   const [woTargetQuantity, setWoTargetQuantity] = useState(1);
 
+  // Form 4: Yeni BOM (Reçete)
+  const sonUrunler = items.filter(i => i.type === "son_urun");
+  const hammaddeler = items.filter(i => i.type === "hammadde");
+  const [bomProductId, setBomProductId] = useState(sonUrunler[0]?.id || "");
+  const [bomRawMaterialId, setBomRawMaterialId] = useState(hammaddeler[0]?.id || "");
+  const [bomQuantity, setBomQuantity] = useState(1);
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -110,8 +117,36 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
     setLoading(false);
   };
 
+  const handleCreateBOM = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bomProductId || !bomRawMaterialId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/bom", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: bomProductId,
+          rawMaterialId: bomRawMaterialId,
+          quantity: bomQuantity,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Reçete (BOM) başarıyla eklendi.");
+        setBomQuantity(1);
+        router.refresh();
+      } else {
+        alert("Hata: " + data.error);
+      }
+    } catch {
+      alert("Bir hata oluştu.");
+    }
+    setLoading(false);
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       {/* Form 1: Yeni Ürün Ekle */}
       <div className="bg-white rounded border border-gray-300 p-5 flex flex-col">
         <h3 className="text-sm font-semibold text-gray-600 uppercase mb-4 border-b border-gray-200 pb-2">
@@ -248,6 +283,55 @@ export default function AdminPanelClient({ items }: { items: Item[] }) {
               className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300 text-white rounded p-2 text-sm font-semibold transition-colors"
             >
               {loading ? "İşleniyor..." : "İş Emri Oluştur"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Form 4: Yeni Reçete (BOM) Tanımla */}
+      <div className="bg-white rounded border border-gray-300 p-5 flex flex-col">
+        <h3 className="text-sm font-semibold text-gray-600 uppercase mb-4 border-b border-gray-200 pb-2">
+          Yeni Reçete (BOM) Tanımla
+        </h3>
+        <form onSubmit={handleCreateBOM} className="flex flex-col gap-3 flex-1">
+          <select
+            className="border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={bomProductId}
+            onChange={(e) => setBomProductId(e.target.value)}
+          >
+            <option value="" disabled>Son Ürün Seçin</option>
+            {sonUrunler.map((i) => (
+              <option key={i.id} value={i.id}>{i.name}</option>
+            ))}
+          </select>
+          <select
+            className="border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={bomRawMaterialId}
+            onChange={(e) => setBomRawMaterialId(e.target.value)}
+          >
+            <option value="" disabled>Hammadde Seçin</option>
+            {hammaddeler.map((i) => (
+              <option key={i.id} value={i.id}>{i.name}</option>
+            ))}
+          </select>
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-500 mb-1">Miktar (1 Ürün İçin)</label>
+            <input
+              required
+              type="number"
+              min="1"
+              className="border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={bomQuantity}
+              onChange={(e) => setBomQuantity(Number(e.target.value))}
+            />
+          </div>
+          <div className="mt-auto pt-2">
+            <button
+              type="submit"
+              disabled={loading || !bomProductId || !bomRawMaterialId}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded p-2 text-sm font-semibold transition-colors"
+            >
+              {loading ? "İşleniyor..." : "Reçete Ekle"}
             </button>
           </div>
         </form>

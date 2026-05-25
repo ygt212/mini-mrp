@@ -1,6 +1,14 @@
 import pool from "@/lib/db";
 import Link from "next/link";
 
+interface WorkOrderOperation {
+  id: string;
+  work_order_id: string;
+  operation_name: string;
+  step_order: number;
+  status: string;
+}
+
 interface WorkOrder {
   id: string;
   item_id: string;
@@ -8,6 +16,7 @@ interface WorkOrder {
   target_quantity: number;
   status: string;
   created_at: string;
+  operations?: { id: string; operation_name: string; step_order: number; status: string }[];
 }
 
 export default async function UretimPage() {
@@ -21,7 +30,11 @@ export default async function UretimPage() {
       LEFT JOIN items i ON wo.item_id = i.id 
       ORDER BY wo.created_at DESC
     `);
-    orders = result.rows;
+    const opsResult = await pool.query(`SELECT * FROM work_order_operations ORDER BY step_order ASC`);
+    orders = result.rows.map(wo => ({
+      ...wo,
+      operations: opsResult.rows.filter((op: WorkOrderOperation) => op.work_order_id === wo.id)
+    }));
   } catch (error) {
     console.error("Veritabanı bağlantı hatası:", error);
     dbError = "Veritabanı bağlantı hatası oluştu.";
@@ -74,6 +87,7 @@ export default async function UretimPage() {
                       <th className="px-4 py-2 font-semibold border-r border-gray-200">Ürün Adı</th>
                       <th className="px-4 py-2 font-semibold border-r border-gray-200">Hedef Miktar</th>
                       <th className="px-4 py-2 font-semibold border-r border-gray-200">Durum</th>
+                      <th className="px-4 py-2 font-semibold border-r border-gray-200">Operasyon Rotası</th>
                       <th className="px-4 py-2 font-semibold">Tarih</th>
                     </tr>
                   </thead>
@@ -84,12 +98,30 @@ export default async function UretimPage() {
                         <td className="px-4 py-2 border-r border-gray-200">{order.item_name}</td>
                         <td className="px-4 py-2 border-r border-gray-200">{order.target_quantity}</td>
                         <td className="px-4 py-2 border-r border-gray-200">{order.status}</td>
+                        <td className="px-4 py-2 border-r border-gray-200">
+                          <div className="flex flex-wrap gap-1">
+                            {order.operations && order.operations.length > 0 ? (
+                              order.operations.map(op => (
+                                <span 
+                                  key={op.id} 
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                    op.status === 'Tamamlandı' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                                  }`}
+                                >
+                                  {op.step_order}. {op.operation_name}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">-</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-2">{new Date(order.created_at).toLocaleString('tr-TR')}</td>
                       </tr>
                     ))}
                     {orders.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-4 py-3 text-gray-400 italic text-center">Kayıt bulunamadı.</td>
+                        <td colSpan={6} className="px-4 py-3 text-gray-400 italic text-center">Kayıt bulunamadı.</td>
                       </tr>
                     )}
                   </tbody>

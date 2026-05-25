@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     if (!itemId || !amount || amount <= 0) {
       return Response.json(
         { success: false, error: "itemId ve geçerli bir amount gereklidir." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -18,14 +18,14 @@ export async function POST(request: Request) {
     // Önce mevcut stoku kontrol et
     const checkResult = await client.query(
       "SELECT stock, min_stock FROM items WHERE id = $1",
-      [itemId]
+      [itemId],
     );
 
     if (checkResult.rows.length === 0) {
       await client.query("ROLLBACK");
       return Response.json(
         { success: false, error: "Ürün bulunamadı." },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -35,20 +35,20 @@ export async function POST(request: Request) {
       await client.query("ROLLBACK");
       return Response.json(
         { success: false, error: "Yetersiz stok." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Stoku azalt
-    await client.query(
-      "UPDATE items SET stock = stock - $1 WHERE id = $2",
-      [amount, itemId]
-    );
+    await client.query("UPDATE items SET stock = stock - $1 WHERE id = $2", [
+      amount,
+      itemId,
+    ]);
 
     // Güncel stok ve min_stock değerlerini al
     const result = await client.query(
       "SELECT stock, min_stock FROM items WHERE id = $1",
-      [itemId]
+      [itemId],
     );
 
     const { stock, min_stock } = result.rows[0];
@@ -58,13 +58,13 @@ export async function POST(request: Request) {
     if (stock < min_stock) {
       const existingOrder = await client.query(
         "SELECT id FROM purchase_orders WHERE item_id = $1 AND status = 'Bekliyor' LIMIT 1",
-        [itemId]
+        [itemId],
       );
 
       if (existingOrder.rows.length === 0) {
         await client.query(
           "INSERT INTO purchase_orders (item_id, quantity, status) VALUES ($1, 50, 'Bekliyor')",
-          [itemId]
+          [itemId],
         );
         autoOrdered = true;
       }
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     console.error("Stok tüketim hatası:", error);
     return Response.json(
       { success: false, error: "Sunucu hatası." },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     client.release();
