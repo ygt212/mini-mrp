@@ -39,16 +39,27 @@ interface PurchaseOrder {
   status: string;
 }
 
+interface SalesOrder {
+  id: string;
+  status: string;
+  target_delivery_date: string | null;
+  customer_name?: string;
+  item_name?: string;
+  quantity: number;
+}
+
 export default function SimulationPanel({
   items,
   purchaseOrders,
   workOrders,
   qualityControls,
+  salesOrders = [],
 }: {
   items: Item[];
   purchaseOrders: PurchaseOrder[];
   workOrders: WorkOrder[];
   qualityControls: QualityControl[];
+  salesOrders?: SalesOrder[];
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -57,11 +68,13 @@ export default function SimulationPanel({
   const [consumeAmount, setConsumeAmount] = useState(1);
 
   const pendingWorkOrders = workOrders.filter((wo) => wo.status !== "Tamamlandı");
+  const advanceableWorkOrders = pendingWorkOrders.filter((wo) => wo.status !== "Malzeme Bekliyor");
+
   const [completeWorkOrderId, setCompleteWorkOrderId] = useState(
-    pendingWorkOrders[0]?.id || ""
+    advanceableWorkOrders[0]?.id || ""
   );
   const [advanceWorkOrderId, setAdvanceWorkOrderId] = useState(
-    pendingWorkOrders[0]?.id || ""
+    advanceableWorkOrders[0]?.id || ""
   );
 
   const pendingQualityControls = qualityControls.filter(
@@ -74,6 +87,9 @@ export default function SimulationPanel({
   const pendingPOs = purchaseOrders.filter((po) => po.status !== "Tam Teslim");
   const [poId, setPoId] = useState(pendingPOs[0]?.id || "");
   const [receiveAmount, setReceiveAmount] = useState(1);
+
+  const readySalesOrders = salesOrders.filter((so) => so.status === "Hazır");
+  const [deliverSalesOrderId, setDeliverSalesOrderId] = useState(readySalesOrders[0]?.id || "");
 
   const handleConsume = async () => {
     if (!consumeItemId || consumeAmount <= 0) return;
@@ -215,6 +231,28 @@ export default function SimulationPanel({
     setLoading(false);
   };
 
+  const handleDeliverSalesOrder = async () => {
+    if (!deliverSalesOrderId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/sales-orders/deliver", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ salesOrderId: deliverSalesOrderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        router.refresh();
+      } else {
+        toast.error("Hata: " + data.error);
+      }
+    } catch {
+      toast.error("Bir hata oluştu.");
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8 text-black items-stretch">
       {/* Bölüm 1: Hammadde Tüket */}
@@ -266,7 +304,7 @@ export default function SimulationPanel({
             onChange={(e) => setCompleteWorkOrderId(e.target.value)}
           >
             <option value="" disabled>İş Emri Seçin</option>
-            {pendingWorkOrders.map((wo) => (
+            {advanceableWorkOrders.map((wo) => (
               <option key={wo.id} value={wo.id}>
                 {wo.item_name || 'Bilinmeyen Ürün'} (Hedef: {wo.target_quantity})
               </option>
@@ -333,7 +371,7 @@ export default function SimulationPanel({
             onChange={(e) => setAdvanceWorkOrderId(e.target.value)}
           >
             <option value="" disabled>İş Emri Seçin</option>
-            {pendingWorkOrders.map((wo) => (
+            {advanceableWorkOrders.map((wo) => (
               <option key={wo.id} value={wo.id}>
                 {wo.item_name || 'Bilinmeyen Ürün'} (Hedef: {wo.target_quantity})
               </option>
@@ -412,6 +450,36 @@ export default function SimulationPanel({
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Bölüm 6: Satış Siparişi Teslimatı */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+        <h3 className="text-md font-bold text-slate-700 mb-3 border-b pb-2">
+          Satış Siparişi Teslimatı
+        </h3>
+        <div className="flex flex-col gap-3 flex-1">
+          <select
+            className="border border-slate-300 rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            value={deliverSalesOrderId}
+            onChange={(e) => setDeliverSalesOrderId(e.target.value)}
+          >
+            <option value="" disabled>Hazır Sipariş Seçin</option>
+            {readySalesOrders.map((so) => (
+              <option key={so.id} value={so.id}>
+                {so.customer_name} - {so.item_name} ({so.quantity})
+              </option>
+            ))}
+          </select>
+          <div className="mt-auto pt-2">
+            <button
+              onClick={handleDeliverSalesOrder}
+              disabled={loading || !deliverSalesOrderId}
+              className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white p-2.5 rounded text-sm font-semibold transition-colors shadow-sm"
+            >
+              {loading ? "İşleniyor..." : "Teslim Et"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

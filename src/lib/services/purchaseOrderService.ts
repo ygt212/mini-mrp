@@ -1,7 +1,7 @@
 import pool from "@/lib/db";
 import { PoolClient } from "pg";
 import { AppError } from "@/lib/errors";
-
+import { checkAndReleaseWaitingWorkOrders } from "./workOrderService";
 export async function receivePurchaseOrder(
   poId: string,
   receiveAmount: number,
@@ -56,6 +56,8 @@ export async function receivePurchaseOrder(
       [item_id, receiveAmount, `Mal Kabul (PO: ${poId})`, currentStock]
     );
 
+    await checkAndReleaseWaitingWorkOrders(client);
+
     if (shouldManageTransaction) await client.query("COMMIT");
 
     return { success: true, message: "Mal kabul işlemi başarılı." };
@@ -109,6 +111,35 @@ export async function updatePurchaseOrderStatus(
     if (shouldManageTransaction) await client.query("COMMIT");
 
     return { success: true, message: "Sipariş durumu güncellendi." };
+  } catch (error) {
+    if (shouldManageTransaction) await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    if (shouldManageTransaction) client.release();
+  }
+}
+
+export async function createPurchaseOrder(
+  itemId: string,
+  quantity: number,
+  salesOrderId?: string | null,
+  externalClient?: PoolClient
+) {
+  const client = externalClient || await pool.connect();
+  const shouldManageTransaction = !externalClient;
+
+  try {
+    if (shouldManageTransaction) await client.query("BEGIN");
+
+    const result = await client.query(
+      `INSERT INTO purchase_orders (item_id, quantity, status, sales_order_id)
+       VALUES ($1, $2, 'Bekliyor', $3) RETURNING *`,
+      [itemId, quantity, salesOrderId || null]
+    );
+
+    if (shouldManageTransaction) await client.query("COMMIT");
+
+    return { success: true, purchaseOrder: result.rows[0] };
   } catch (error) {
     if (shouldManageTransaction) await client.query("ROLLBACK");
     throw error;

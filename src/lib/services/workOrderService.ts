@@ -50,10 +50,23 @@ export async function advanceOperation(workOrderId: string, externalClient?: Poo
   try {
     if (shouldManageTransaction) await client.query("BEGIN");
 
+    const woCheck = await client.query(
+      "SELECT status FROM work_orders WHERE id = $1",
+      [workOrderId]
+    );
+
+    if (woCheck.rows.length === 0) {
+      throw new AppError("İş emri bulunamadı.", 404);
+    }
+
+    if (woCheck.rows[0].status === "Malzeme Bekliyor") {
+      throw new AppError("İş emri 'Malzeme Bekliyor' statüsünde. Operasyon ilerletilemez.", 400);
+    }
+
     const result = await client.query(
       `
       UPDATE work_order_operations
-      SET status = 'Tamamland\u0131'
+      SET status = 'Tamamlandı'
       WHERE id = (
         SELECT id FROM work_order_operations
         WHERE work_order_id = $1 AND status = 'Bekliyor'
@@ -85,7 +98,7 @@ export async function advanceOperation(workOrderId: string, externalClient?: Poo
   }
 }
 
-export async function createWorkOrder(itemId: string, targetQuantity: number, externalClient?: PoolClient) {
+export async function createWorkOrder(itemId: string, targetQuantity: number, salesOrderId?: string | null, externalClient?: PoolClient, ignoreStockCheck: boolean = false) {
   const client = externalClient || await pool.connect();
   const shouldManageTransaction = !externalClient;
 
@@ -142,12 +155,36 @@ export async function createWorkOrder(itemId: string, targetQuantity: number, ex
     }
 
     if (missingMaterials.length > 0) {
-      throw new AppError("Yetersiz hammadde stoku", 400, { missingMaterials });
+      if (ignoreStockCheck) {
+        const woResult = await client.query(
+          "INSERT INTO work_orders (item_id, target_quantity, status, sales_order_id) VALUES ($1, $2, 'Malzeme Bekliyor', $3) RETURNING id",
+          [itemId, targetQuantity, salesOrderId || null]
+        );
+        const newWoId = woResult.rows[0].id;
+
+        const operations = [
+          { step: 1, name: "Kesim/Hazırlık" },
+          { step: 2, name: "Montaj" },
+          { step: 3, name: "Paketleme" },
+        ];
+
+        for (const op of operations) {
+          await client.query(
+            "INSERT INTO work_order_operations (work_order_id, operation_name, step_order, status) VALUES ($1, $2, $3, 'Bekliyor')",
+            [newWoId, op.name, op.step]
+          );
+        }
+
+        if (shouldManageTransaction) await client.query("COMMIT");
+        return { success: true, message: "Malzeme yetersiz olduğu için iş emri 'Malzeme Bekliyor' statüsünde oluşturuldu.", id: newWoId };
+      } else {
+        throw new AppError("Yetersiz hammadde stoku", 400, { missingMaterials });
+      }
     }
 
     const woResult = await client.query(
-      "INSERT INTO work_orders (item_id, target_quantity, status) VALUES ($1, $2, 'Planland\u0131') RETURNING id",
-      [itemId, targetQuantity]
+      "INSERT INTO work_orders (item_id, target_quantity, status, sales_order_id) VALUES ($1, $2, 'Planland\u0131', $3) RETURNING id",
+      [itemId, targetQuantity, salesOrderId || null]
     );
     const newWoId = woResult.rows[0].id;
 
@@ -222,7 +259,7 @@ export async function createWorkOrder(itemId: string, targetQuantity: number, ex
 
     if (shouldManageTransaction) await client.query("COMMIT");
 
-    return { success: true, message: "İş emri oluşturuldu." };
+    return { success: true, message: "İş emri oluşturuldu.", id: newWoId };
   } catch (error) {
     if (shouldManageTransaction) await client.query("ROLLBACK");
     throw error;
@@ -231,3 +268,74 @@ export async function createWorkOrder(itemId: string, targetQuantity: number, ex
   }
 }
 
+export async function checkAndReleaseWaitingWorkOrders(externalClient?: PoolClient) {
+  const client = externalClient || await pool.connect();
+  const shouldManageTransaction = !externalClient;
+
+  try {
+    if (shouldManageTransaction) await client.query("BEGIN");
+
+    const waitingWosRes = await client.query(
+      "SELECT id, item_id, target_quantity FROM work_orders WHERE status = 'Malzeme Bekliyor' ORDER BY created_at ASC"
+    );
+
+    for (const wo of waitingWosRes.rows) {
+      const bomCheck = await client.query(
+        "SELECT raw_material_id, quantity FROM bill_of_materials WHERE product_id = $1",
+        [wo.item_id]
+      );
+
+      let canFulfill = true;
+      const deductions = [];
+
+      for (const bom of bomCheck.rows) {
+        const requiredQty = bom.quantity * wo.target_quantity;
+        const stockCheck = await client.query(
+          "SELECT stock FROM items WHERE id = $1",
+          [bom.raw_material_id]
+        );
+        if (stockCheck.rows.length > 0 && stockCheck.rows[0].stock >= requiredQty) {
+          deductions.push({
+            id: bom.raw_material_id,
+            qty: requiredQty
+          });
+        } else {
+          canFulfill = false;
+          break;
+        }
+      }
+
+      if (canFulfill) {
+        for (const deduction of deductions) {
+          const updatedStockRes = await client.query(
+            "UPDATE items SET stock = stock - $1 WHERE id = $2 RETURNING stock",
+            [deduction.qty, deduction.id]
+          );
+          const newStock = updatedStockRes.rows[0].stock;
+
+          await client.query(
+            "INSERT INTO inventory_transactions (item_id, quantity_change, transaction_type, reference_details, post_transaction_stock) VALUES ($1, $2, '\u00C7\u0131k\u0131\u015F', $3, $4)",
+            [deduction.id, -deduction.qty, `\u0130\u015F Emri \u00DCretim T\u00FCketimi (Gecikmeli, WO: ${wo.id})`, newStock]
+          );
+        }
+
+        await client.query(
+          "UPDATE work_orders SET status = 'Planland\u0131' WHERE id = $1",
+          [wo.id]
+        );
+
+        await client.query(
+          "UPDATE sales_orders SET status = '\u00DCretim Planland\u0131' WHERE id = (SELECT sales_order_id FROM work_orders WHERE id = $1) AND status = 'Malzeme Bekliyor'",
+          [wo.id]
+        );
+      }
+    }
+
+    if (shouldManageTransaction) await client.query("COMMIT");
+  } catch (error) {
+    if (shouldManageTransaction) await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    if (shouldManageTransaction) client.release();
+  }
+}

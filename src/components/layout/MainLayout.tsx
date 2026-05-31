@@ -15,6 +15,8 @@ export default function MainLayout({ children, title }: MainLayoutProps) {
   const menuItems = [
     { href: "/", label: "Dashboard" },
     { href: "/admin", label: "Admin Paneli" },
+    { href: "/satis", label: "Satış & Talep" },
+    { href: "/planlama", label: "Planlama (MRP)" },
     { href: "/stok", label: "Stok Yönetimi" },
     { href: "/satinalma", label: "Satın Alma" },
     { href: "/uretim", label: "Üretim Modülü" },

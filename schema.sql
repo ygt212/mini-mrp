@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS items (
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) NOT NULL,           -- hammadde, son_urun
   stock INT NOT NULL DEFAULT 0,
+  reserved_quantity INT DEFAULT 0,
   min_stock INT NOT NULL DEFAULT 0,
   auto_order_quantity INT NOT NULL DEFAULT 50,
   created_at TIMESTAMP DEFAULT NOW()
@@ -60,3 +61,26 @@ CREATE TABLE IF NOT EXISTS inventory_transactions (
   post_transaction_stock INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS customers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  contact_info VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sales_orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+  quantity INT NOT NULL,
+  order_date DATE DEFAULT CURRENT_DATE,
+  target_delivery_date DATE,
+  reserved_quantity INT DEFAULT 0,
+  status VARCHAR(50) DEFAULT 'Bekliyor',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add pegging links to MRP tables
+ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS sales_order_id UUID REFERENCES sales_orders(id) ON DELETE SET NULL;
+ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS sales_order_id UUID REFERENCES sales_orders(id) ON DELETE SET NULL;
