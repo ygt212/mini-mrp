@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors";
 import pool from "@/lib/db";
 
 const UUID_REGEX =
@@ -81,10 +82,12 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true, message: "Reçete eklendi" });
   } catch (error) {
-    console.error("BOM ekleme hatası:", error);
-    return Response.json(
-      { success: false, error: "Sunucu hatası." },
-      { status: 500 },
-    );
+    if (error instanceof AppError) {
+      return Response.json({ success: false, error: error.message, ...(error.data as Record<string, unknown>) }, { status: error.statusCode });
+    } else {
+      console.error(error);
+      return Response.json({ success: false, error: "Sunucu hatası" }, { status: 500 });
+    }
   }
+
 }

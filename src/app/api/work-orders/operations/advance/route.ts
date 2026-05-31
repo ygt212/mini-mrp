@@ -1,4 +1,5 @@
-import pool from "@/lib/db";
+import { AppError } from "@/lib/errors";
+import { advanceOperation } from "@/lib/services/workOrderService";
 
 export async function POST(request: Request) {
   try {
@@ -11,42 +12,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await pool.query(
-      `
-      UPDATE work_order_operations
-      SET status = 'Tamamland\u0131'
-      WHERE id = (
-        SELECT id FROM work_order_operations
-        WHERE work_order_id = $1 AND status = 'Bekliyor'
-        ORDER BY step_order ASC
-        LIMIT 1
-      )
-      RETURNING *
-    `,
-      [workOrderId],
-    );
-
-    if (result.rows.length === 0) {
-      return Response.json(
-        { success: false, error: "Bekleyen operasyon adımı bulunamadı." },
-        { status: 404 },
-      );
-    }
-
-    await pool.query(
-      "UPDATE work_orders SET status = '\u00DCretimde' WHERE id = $1 AND status = 'Planland\u0131'",
-      [workOrderId],
-    );
-
-    return Response.json({
-      success: true,
-      message: "Operasyon adımı başarıyla tamamlandı.",
-    });
+    const result = await advanceOperation(workOrderId);
+    return Response.json(result);
   } catch (error) {
-    console.error("Operasyon ilerletme hatası:", error);
-    return Response.json(
-      { success: false, error: "Sunucu hatası." },
-      { status: 500 },
-    );
+    if (error instanceof AppError) {
+      return Response.json({ success: false, error: error.message, ...(error.data as Record<string, unknown>) }, { status: error.statusCode });
+    } else {
+      console.error(error);
+      return Response.json({ success: false, error: "Sunucu hatası" }, { status: 500 });
+    }
   }
+
 }

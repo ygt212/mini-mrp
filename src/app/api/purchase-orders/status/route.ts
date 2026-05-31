@@ -1,4 +1,5 @@
-import pool from "@/lib/db";
+import { AppError } from "@/lib/errors";
+import { updatePurchaseOrderStatus } from "@/lib/services/purchaseOrderService";
 
 export async function POST(request: Request) {
   try {
@@ -11,37 +12,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const checkRes = await pool.query(
-      "SELECT status FROM purchase_orders WHERE id = $1",
-      [poId]
-    );
-
-    if (checkRes.rows.length === 0) {
-      return Response.json({ success: false, error: "Sipariş bulunamadı." }, { status: 404 });
-    }
-
-    const currentStatus = checkRes.rows[0].status;
-
-    let newStatus = "";
-    if (action === "onayla") {
-      if (currentStatus !== "Bekliyor") {
-        return Response.json({ success: false, error: "Sadece Bekliyor statüsündeki siparişler onaylanabilir." }, { status: 400 });
-      }
-      newStatus = "Onayland\u0131";
-    } else if (action === "siparis_gec") {
-      if (currentStatus !== "Onayland\u0131") {
-        return Response.json({ success: false, error: "Sadece Onaylandı statüsündeki siparişler tedarikçiye geçilebilir." }, { status: 400 });
-      }
-      newStatus = "Sipari\u015F Ge\u00E7ildi";
-    } else {
-      return Response.json({ success: false, error: "Geçersiz aksiyon." }, { status: 400 });
-    }
-
-    await pool.query("UPDATE purchase_orders SET status = $1 WHERE id = $2", [newStatus, poId]);
-
-    return Response.json({ success: true, message: "Sipariş durumu güncellendi." });
+    const result = await updatePurchaseOrderStatus(poId, action);
+    return Response.json(result);
   } catch (error) {
-    console.error("Satın Alma sipariş durum güncelleme hatası:", error);
-    return Response.json({ success: false, error: "Sunucu hatası." }, { status: 500 });
+    if (error instanceof AppError) {
+      return Response.json({ success: false, error: error.message, ...(error.data as Record<string, unknown>) }, { status: error.statusCode });
+    } else {
+      console.error(error);
+      return Response.json({ success: false, error: "Sunucu hatası" }, { status: 500 });
+    }
   }
+
 }
